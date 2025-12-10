@@ -109,6 +109,20 @@ void game_call_events(struct Game *game)
         case SDL_EVENT_QUIT: // checking if we quit the game.
             game->is_running = false;
             break;
+
+        case SDL_EVENT_KEY_DOWN:
+            // checking for keyboard events.
+            switch (game->event.key.scancode)
+            {
+            case SDL_SCANCODE_ESCAPE: // if we pressed escape, it will close the window.
+                game->is_running = false;
+                break;
+
+            default:
+                break;
+            }
+            break;
+
         default:
             break;
         }
@@ -163,7 +177,7 @@ void housekeeping(struct Game **game)
         // cleaning the heap && dangling pointers.
         free(g);
         g = NULL;
-        game = NULL;
+        *game = NULL;
 
         // just for me :)
         printf("All Terminated!\n");
