@@ -18,28 +18,55 @@ struct Game
 {
     SDL_Window *window;
     SDL_Renderer *renderer;
+    SDL_Event event;
+    bool is_running;
 };
 
+bool game_construct(struct Game **game);
 bool game_init_sdl(struct Game *game);
+
+void game_call_events(struct Game *game);
+void game_draw(struct Game *game);
 void game_run(struct Game *game);
 
-void housekeeping(struct Game *game);
+void housekeeping(struct Game **game);
 
 int main()
 {
     bool exit_status = EXIT_FAILURE;
 
-    struct Game game = {NULL, NULL};
+    struct Game *game = NULL;
 
-    if (game_init_sdl(&game))
+    if (game_construct(&game))
     {
-        game_run(&game);
-
+        game_run(game);
         exit_status = EXIT_SUCCESS;
     }
 
     housekeeping(&game);
     return exit_status;
+}
+
+// ==== Game Construction ====
+bool game_construct(struct Game **game)
+{
+    *game = calloc(1, sizeof(struct Game));
+    if (*game == NULL)
+    {
+        fprintf(stderr, "Error! Constructing the Game.\n");
+        return false;
+    }
+
+    struct Game *g = *game;
+
+    if (!game_init_sdl(g))
+    {
+        return false;
+    }
+
+    g->is_running = true;
+
+    return true;
 }
 
 // ==== initialize SLD ====
@@ -71,31 +98,74 @@ bool game_init_sdl(struct Game *game)
     return true;
 }
 
+// ==== Events ====
+void game_call_events(struct Game *game)
+{
+    // Event Loop.
+    while (SDL_PollEvent(&game->event))
+    {
+        switch (game->event.type)
+        {
+        case SDL_EVENT_QUIT: // checking if we quit the game.
+            game->is_running = false;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+// ==== Rendering ====
+void game_draw(struct Game *game)
+{
+    // clearing and setting the renderer.
+    SDL_RenderClear(game->renderer);
+    SDL_RenderPresent(game->renderer);
+}
+
 // ==== The Game Itself ====
 void game_run(struct Game *game)
 {
-    SDL_SetRenderDrawColor(game->renderer, 255, 0, 0, 255);
+    while (game->is_running)
+    {
+        // event checking.
+        game_call_events(game);
 
-    SDL_RenderClear(game->renderer);
-    SDL_RenderPresent(game->renderer);
+        // rendering.
+        game_draw(game);
 
-    SDL_Delay(5000);
+        // for running the game @ 60fps.
+        SDL_Delay(1000 / 60);
+    }
 }
 
 // ==== Cleaning up ====
-void housekeeping(struct Game *game)
+void housekeeping(struct Game **game)
 {
-    if (game->window)
-    { // not sure if I can pass a NULL to this :)
-        SDL_DestroyWindow(game->window);
-        game->window = NULL;
-    }
+    if (*game != NULL)
+    {
+        struct Game *g = *game;
 
-    if (game->renderer)
-    { // not sure if I can pass a NULL to this :)
-        SDL_DestroyRenderer(game->renderer);
-        game->renderer = NULL;
-    }
+        if (g->window)
+        { // not sure if I can pass a NULL to this :)
+            SDL_DestroyWindow(g->window);
+            g->window = NULL;
+        }
 
-    SDL_Quit();
+        if (g->renderer)
+        { // not sure if I can pass a NULL to this :)
+            SDL_DestroyRenderer(g->renderer);
+            g->renderer = NULL;
+        }
+
+        SDL_Quit();
+
+        // cleaning the heap && dangling pointers.
+        free(g);
+        g = NULL;
+        game = NULL;
+
+        // just for me :)
+        printf("All Terminated!\n");
+    }
 }
