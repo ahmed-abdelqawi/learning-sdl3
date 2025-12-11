@@ -1,6 +1,7 @@
 // SLD3 includes.
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3_image/SDL_image.h> // for image stuff.
 
 // other includes.
 #include <stdio.h>
@@ -18,6 +19,7 @@ struct Game
 {
     SDL_Window *window;
     SDL_Renderer *renderer;
+    SDL_Texture *background;
     SDL_Event event;
     bool is_running;
 };
@@ -26,7 +28,10 @@ bool game_construct(struct Game **game);
 bool game_init_sdl(struct Game *game);
 
 void game_call_events(struct Game *game);
+
+bool game_load_media(struct Game *game);
 void game_draw(struct Game *game);
+
 void game_run(struct Game *game);
 
 void housekeeping(struct Game **game);
@@ -64,6 +69,11 @@ bool game_construct(struct Game **game)
         return false;
     }
 
+    if (!game_load_media(g))
+    {
+        return false;
+    }
+
     g->is_running = true;
 
     return true;
@@ -94,6 +104,16 @@ bool game_init_sdl(struct Game *game)
         fprintf(stderr, "Error! Creating a Renderer: %s\n", SDL_GetError());
         return false;
     }
+
+    // setting the window icon.
+    SDL_Surface *icon_surf = IMG_Load("images/cIcon.png");
+    if (icon_surf && !SDL_SetWindowIcon(game->window, icon_surf))
+    {
+        fprintf(stderr, "Error! Loading Window Icon: %s\n", SDL_GetError());
+        SDL_DestroySurface(icon_surf);
+        return false;
+    }
+    SDL_DestroySurface(icon_surf);
 
     return true;
 }
@@ -129,11 +149,30 @@ void game_call_events(struct Game *game)
     }
 }
 
+// === Texture Media ====
+bool game_load_media(struct Game *game)
+{
+    // loading the background texture from an image.
+    game->background = IMG_LoadTexture(game->renderer, "images/background.jpg");
+    if (!game->background)
+    {
+        fprintf(stderr, "Error! Loading the Background Texture: %s\n", SDL_GetError());
+        return false;
+    }
+
+    return true;
+}
+
 // ==== Rendering ====
 void game_draw(struct Game *game)
 {
-    // clearing and setting the renderer.
+    // clearing the renderer.
     SDL_RenderClear(game->renderer);
+
+    // loading the background.
+    SDL_RenderTexture(game->renderer, game->background, NULL, NULL);
+
+    // setting the
     SDL_RenderPresent(game->renderer);
 }
 
@@ -160,6 +199,12 @@ void housekeeping(struct Game **game)
     {
         struct Game *g = *game;
 
+        if (g->background)
+        {
+            SDL_DestroyTexture(g->background);
+            g->background = NULL;
+        }
+
         if (g->window)
         { // not sure if I can pass a NULL to this :)
             SDL_DestroyWindow(g->window);
@@ -172,6 +217,7 @@ void housekeeping(struct Game **game)
             g->renderer = NULL;
         }
 
+        // take SDL offline.
         SDL_Quit();
 
         // cleaning the heap && dangling pointers.
