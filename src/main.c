@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 
 // flags for SDL.
 #define SDL_FLAGS SDL_INIT_VIDEO
@@ -31,6 +32,7 @@ void game_call_events(struct Game *game);
 
 bool game_load_media(struct Game *game);
 void game_draw(struct Game *game);
+void game_render_color(struct Game *game);
 
 void game_run(struct Game *game);
 
@@ -115,6 +117,8 @@ bool game_init_sdl(struct Game *game)
     }
     SDL_DestroySurface(icon_surf);
 
+    srand((unsigned int)time(NULL));
+
     return true;
 }
 
@@ -138,6 +142,10 @@ void game_call_events(struct Game *game)
                 game->is_running = false;
                 break;
 
+            case SDL_SCANCODE_SPACE: // when we press space it will change the background color.
+                game_render_color(game);
+                break;
+
             default:
                 break;
             }
@@ -153,7 +161,7 @@ void game_call_events(struct Game *game)
 bool game_load_media(struct Game *game)
 {
     // loading the background texture from an image.
-    game->background = IMG_LoadTexture(game->renderer, "images/background.jpg");
+    game->background = IMG_LoadTexture(game->renderer, "images/background.png");
     if (!game->background)
     {
         fprintf(stderr, "Error! Loading the Background Texture: %s\n", SDL_GetError());
@@ -174,6 +182,15 @@ void game_draw(struct Game *game)
 
     // setting the
     SDL_RenderPresent(game->renderer);
+}
+
+void game_render_color(struct Game *game)
+{
+    uint8_t red = (uint8_t)rand() % 256;
+    uint8_t green = (uint8_t)rand() % 256;
+    uint8_t blue = (uint8_t)rand() % 256;
+
+    SDL_SetRenderDrawColor(game->renderer, red, green, blue, SDL_ALPHA_OPAQUE);
 }
 
 // ==== The Game Itself ====
